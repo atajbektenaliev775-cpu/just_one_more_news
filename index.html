@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Just One More News</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="top">
+    <a href="#" class="logo" onclick="setRegion('all');return false">Just One More <b>News</b></a>
+    <div id="auth-box"></div>
+  </div>
+  <nav id="regions"></nav>
+</header>
+
+<main id="app"></main>
+<footer>© Just One More News</footer>
+
+<dialog id="dlg"><button class="close" onclick="dlg.close()">✕</button><div id="dlg-body"></div></dialog>
+
+<script>
+window.addEventListener('error', function (e) {
+  var m = e.message || ('Не загрузился файл: ' + (e.target && (e.target.src || e.target.href)));
+  document.querySelector('main').insertAdjacentHTML('beforebegin',
+    '<p style="color:#c0392b;padding:8px 16px;max-width:1100px;margin:auto">Ошибка: ' + m + '</p>');
+}, true);
+</script>
+<script src="supabase-lite.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
