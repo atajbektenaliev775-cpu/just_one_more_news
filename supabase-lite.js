@@ -23,6 +23,7 @@
       subs.forEach((f) => f());
     };
     const headers = (extra) => ({ apikey: key, Authorization: 'Bearer ' + (session ? session.access_token : key), ...extra });
+    const back = () => location.protocol === 'file:' ? '' : encodeURIComponent(location.origin + location.pathname);
     const authPost = (path, body) => fetch(url + '/auth/v1/' + path, {
       method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -53,7 +54,7 @@
       },
       async signUp({ email, password, options }) {
         try {
-          const r = await parse(await authPost('signup', { email, password, data: (options && options.data) || {} }));
+          const r = await parse(await authPost('signup' + (back() ? '?redirect_to=' + back() : ''), { email, password, data: (options && options.data) || {} }));
           if (r.error) return r;
           if (r.data.access_token) { save(r.data); return { data: { session: r.data, user: r.data.user }, error: null }; }
           return { data: { session: null, user: r.data }, error: null };
@@ -70,7 +71,7 @@
         catch (e) { return err(e.message); }
       },
       async resetPasswordForEmail(email) {
-        try { return await parse(await authPost('recover', { email })); } catch (e) { return err(e.message); }
+        try { return await parse(await authPost('recover' + (back() ? '?redirect_to=' + back() : ''), { email })); } catch (e) { return err(e.message); }
       },
     };
 
