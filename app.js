@@ -38,7 +38,7 @@ async function loadFeed() {
   if (error) return ($('app').innerHTML = `<p class="msg">Ошибка: ${esc(error.message)}</p>`);
   if (!data.length) return ($('app').innerHTML = '<p>В этом регионе пока нет новостей.</p>');
   const card = (p) => { const im = mediaOf(p).find((m) => m.type === 'image'); return `<div class="card" onclick="openPost('${p.id}')">
-    ${im ? `<img src="${esc(im.url)}" alt="">` : '<div class="ph"></div>'}
+    ${im ? `<img src="${esc(im.url)}" alt="">` : ''}
     <div class="tag">${esc(p.region)}</div><h3>${esc(p.title)}</h3>
     <div class="meta">${fmt(p.created_at)} · ${fullName(p.profiles)}</div></div>`; };
   const [first, ...rest] = data;
