@@ -12,6 +12,7 @@
 <header>
   <div class="top">
     <a href="#" class="logo" onclick="setRegion('all');return false">Just One More <b>News</b></a>
+    <form id="search" onsubmit="doSearch(event)"><input id="q" type="search" placeholder="Поиск новостей…" maxlength="60"><button class="btn">Найти</button></form>
     <div id="auth-box"></div>
   </div>
   <nav id="regions"></nav>

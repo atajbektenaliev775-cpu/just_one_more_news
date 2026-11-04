@@ -80,6 +80,7 @@
       const api = {
         select(c) { q.p.set('select', c || '*'); return api; },
         eq(c, v) { q.p.append(c, 'eq.' + v); return api; },
+        filter(k, v) { q.p.append(k, v); return api; },
         order(c, o) { q.p.set('order', c + (o && o.ascending === false ? '.desc' : '.asc')); return api; },
         insert(row) { q.m = 'POST'; q.body = row; return api; },
         update(row) { q.m = 'PATCH'; q.body = row; return api; },

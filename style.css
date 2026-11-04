@@ -80,3 +80,7 @@ input,select,textarea{font-size:16px}
 
 .or{text-align:center;color:var(--muted);font-size:13px;margin:6px 0}
 .gbtn{width:100%;display:block}
+
+#search{display:flex;gap:6px;flex:1;max-width:340px;margin:0 16px}
+#search input{padding:7px 10px}
+@media(max-width:700px){#search{order:3;width:100%;max-width:none;margin:0}}

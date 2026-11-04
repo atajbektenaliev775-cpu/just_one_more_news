@@ -25,24 +25,30 @@ function renderRegions() {
   $('regions').innerHTML = ['all', ...REGIONS].map((r) =>
     `<button class="${r === region ? 'on' : ''}" onclick="setRegion('${r}')">${r === 'all' ? 'Все новости' : r}</button>`).join('');
 }
-function setRegion(r) { region = r; renderRegions(); loadFeed(); }
+function setRegion(r) { region = r; if (r === 'all') { term = ''; const qi = $('q'); if (qi) qi.value = ''; } renderRegions(); loadFeed(); }
 
 // ---------- Лента ----------
 const mediaOf = (p) => (p.media && p.media.length ? p.media
   : [p.image_url && { type: 'image', url: p.image_url }, p.video_url && { type: 'video', url: p.video_url }].filter(Boolean).map((m, i) => ({ ...m, id: i + 1 })));
+let term = '';
+function doSearch(e) { e.preventDefault(); term = $('q').value.trim(); loadFeed(); }
+function clearSearch() { term = ''; $('q').value = ''; loadFeed(); }
 async function loadFeed() {
   let q = sb.from('posts').select('id,title,region,image_url,media,created_at,profiles(first_name,last_name)')
     .eq('status', 'approved').order('created_at', { ascending: false });
   if (region !== 'all') q = q.eq('region', region);
+  const words = term.replace(/[,()*%\\"'\u0060]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 5);
+  if (words.length) q = q.filter('and', '(' + words.map((x) => `or(title.ilike.*${x}*,body.ilike.*${x}*)`).join(',') + ')');
   const { data, error } = await q;
   if (error) return ($('app').innerHTML = `<p class="msg">Ошибка: ${esc(error.message)}</p>`);
-  if (!data.length) return ($('app').innerHTML = '<p>В этом регионе пока нет новостей.</p>');
+  const found = term ? `<p class="meta">Запрос «${esc(term)}»: найдено ${data.length} · <a href="#" onclick="clearSearch();return false">сбросить поиск</a></p>` : '';
+  if (!data.length) return ($('app').innerHTML = found + `<p>${term ? 'Ничего не найдено.' : 'В этом регионе пока нет новостей.'}</p>`);
   const card = (p) => { const im = mediaOf(p).find((m) => m.type === 'image'); return `<div class="card" onclick="openPost('${p.id}')">
     ${im ? `<img src="${esc(im.url)}" alt="">` : ''}
     <div class="tag">${esc(p.region)}</div><h3>${esc(p.title)}</h3>
     <div class="meta">${fmt(p.created_at)} · ${fullName(p.profiles)}</div></div>`; };
   const [first, ...rest] = data;
-  $('app').innerHTML = `<div class="hero">${card(first)}<div class="grid" style="grid-template-columns:1fr">${rest.slice(0, 2).map(card).join('')}</div></div>
+  $('app').innerHTML = found + `<div class="hero">${card(first)}<div class="grid" style="grid-template-columns:1fr">${rest.slice(0, 2).map(card).join('')}</div></div>
     <div class="grid">${rest.slice(2).map(card).join('')}</div>`;
 }
 
