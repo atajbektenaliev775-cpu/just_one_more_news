@@ -190,23 +190,62 @@ async function postDialog(id) {
   open(`<h2>${p ? 'Редактирование' : 'Новая статья'}</h2><form onsubmit="submitPost(event)">
     <input name="title" placeholder="Заголовок" required maxlength="200" value="${esc(p?.title)}">
     <select name="region">${REGIONS.map((r) => `<option ${p?.region === r ? 'selected' : ''}>${r}</option>`).join('')}</select>
-    <textarea name="body" placeholder="Текст статьи" required>${esc(p?.body)}</textarea>
+    <div id="editor" class="ed" contenteditable="true" data-ph="Текст статьи" onblur="saveRange()" onkeyup="saveRange()" onmouseup="saveRange()" onpaste="event.preventDefault();document.execCommand('insertText',false,event.clipboardData.getData('text/plain'))"></div>
     <label>Фото и видео (можно несколько) <input type="file" accept="image/*,video/*" multiple onchange="addFiles(this)"></label>
     <div id="media-list"></div>
-    <div class="meta">Поставьте курсор в текст и нажмите «Вставить в текст» у нужного файла. Невставленные файлы будут в конце статьи.</div>
+    <div class="meta">Поставьте курсор в текст и нажмите «Вставить в текст»: картинка появится прямо в статье. Крестик на картинке убирает её из текста. Невставленные файлы будут в конце статьи.</div>
     <div class="msg" id="post-msg"></div><button class="btn">${p ? 'Сохранить' : 'Отправить на проверку'}</button></form>`);
+  lastR = null;
+  fillEditor(p?.body || '');
   drawMedia();
 }
 function drawMedia() {
   $('media-list').innerHTML = draft.media.map((m) => `<div class="q">${m.type === 'video' ? '🎬 видео' : `<img src="${esc(m.url)}" style="height:50px;vertical-align:middle;width:auto;margin:0">`}
-    <button type="button" class="btn alt" onclick="insertMedia(${m.id})">Вставить в текст</button>
+    <button type="button" class="btn alt" onmousedown="event.preventDefault()" onclick="insertMedia(${m.id})">Вставить в текст</button>
     <button type="button" class="btn no" onclick="dropMedia(${m.id})">✕</button></div>`).join('');
 }
-function insertMedia(id) {
-  const ta = document.querySelector('#dlg-body textarea'), i = ta.selectionStart;
-  ta.value = ta.value.slice(0, i) + `\n[[m${id}]]\n` + ta.value.slice(i); ta.focus();
+let lastR = null;
+function saveRange() { const s = getSelection(); if (s.rangeCount && $('editor').contains(s.anchorNode)) lastR = s.getRangeAt(0).cloneRange(); }
+function mediaHtml(m) {
+  const el = m.type === 'video' ? `<video src="${esc(m.url)}" preload="metadata" controls></video>` : `<img src="${esc(m.url)}" alt="">`;
+  return `<figure contenteditable="false" data-m="${m.id}">${el}<button type="button" class="fx" title="Убрать из текста" onclick="this.parentNode.remove()">✕</button></figure>`;
 }
-function dropMedia(id) { draft.media = draft.media.filter((m) => m.id !== id); drawMedia(); }
+function fillEditor(text) {
+  $('editor').innerHTML = String(text).split(/(\[\[m\d+\]\])/).map((s) => {
+    const k = s.match(/^\[\[m(\d+)\]\]$/);
+    if (!k) return esc(s);
+    const m = draft.media.find((x) => x.id == k[1]);
+    return m ? mediaHtml(m) : '';
+  }).join('');
+}
+function ser(node) {
+  let t = '';
+  node.childNodes.forEach((c) => {
+    if (c.nodeType === 3) t += c.nodeValue;
+    else if (c.nodeName === 'BR') t += '\n';
+    else if (c.nodeName === 'FIGURE') t += `\n[[m${c.dataset.m}]]\n`;
+    else t += '\n' + ser(c) + '\n';
+  });
+  return t;
+}
+function insertMedia(id) {
+  const ed = $('editor'), m = draft.media.find((x) => x.id === id);
+  if (!m) return;
+  const box = document.createElement('div'); box.innerHTML = mediaHtml(m);
+  const fig = box.firstChild, sel = getSelection();
+  let r = null;
+  if (sel.rangeCount && ed.contains(sel.anchorNode)) r = sel.getRangeAt(0);
+  else if (lastR && ed.contains(lastR.startContainer)) r = lastR;
+  if (r) { r.deleteContents(); r.insertNode(fig); } else ed.appendChild(fig);
+  if (!fig.nextSibling) ed.appendChild(document.createElement('br'));
+  const r2 = document.createRange(); r2.setStartAfter(fig); r2.collapse(true);
+  sel.removeAllRanges(); sel.addRange(r2); lastR = r2.cloneRange();
+}
+function dropMedia(id) {
+  draft.media = draft.media.filter((m) => m.id !== id);
+  document.querySelectorAll(`#editor figure[data-m="${id}"]`).forEach((f) => f.remove());
+  drawMedia();
+}
 async function upload(file) {
   const path = `${user.id}/${Date.now()}-${file.name.replace(/[^\w.-]/g, '_')}`;
   const { error } = await sb.storage.from('media').upload(path, file);
@@ -228,7 +267,9 @@ async function addFiles(inp) {
 async function submitPost(e) {
   e.preventDefault();
   const f = e.target.elements, msg = $('post-msg');
-  const row = { title: f.title.value, region: f.region.value, body: f.body.value, media: draft.media };
+  const body = ser($('editor')).trim();
+  if (!body) return (msg.textContent = 'Введите текст статьи');
+  const row = { title: f.title.value, region: f.region.value, body, media: draft.media };
   const { error } = draft.id
     ? await sb.from('posts').update(row).eq('id', draft.id)
     : await sb.from('posts').insert({ ...row, author_id: user.id });
