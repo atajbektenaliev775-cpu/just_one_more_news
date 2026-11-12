@@ -12,10 +12,19 @@
 <header>
   <div class="top">
     <a href="#" class="logo" onclick="setRegion('all');return false">Just One More <b>News</b></a>
-    <form id="search" onsubmit="doSearch(event)"><input id="q" type="search" placeholder="Поиск новостей…" maxlength="60"><button class="btn">Найти</button></form>
-    <div id="auth-box"></div>
+    <div class="right">
+      <button class="icon-btn" id="search-btn" onclick="toggleSearch()" aria-label="Поиск"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+      <div id="auth-box"></div>
+    </div>
   </div>
   <nav id="regions"></nav>
+<div id="search-panel" hidden>
+    <form onsubmit="doSearch(event)">
+      <input id="q" type="search" placeholder="Поиск новостей, тем и слов" maxlength="60" autocomplete="off">
+      <button class="btn">Найти</button>
+      <button type="button" class="icon-btn" onclick="toggleSearch(false)" aria-label="Закрыть">✕</button>
+    </form>
+  </div>
 </header>
 
 <main id="app"></main>

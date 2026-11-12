@@ -31,7 +31,14 @@ function setRegion(r) { region = r; if (r === 'all') { term = ''; const qi = $('
 const mediaOf = (p) => (p.media && p.media.length ? p.media
   : [p.image_url && { type: 'image', url: p.image_url }, p.video_url && { type: 'video', url: p.video_url }].filter(Boolean).map((m, i) => ({ ...m, id: i + 1 })));
 let term = '';
-function doSearch(e) { e.preventDefault(); term = $('q').value.trim(); loadFeed(); }
+function toggleSearch(show) {
+  const p = $('search-panel');
+  show = show === undefined ? p.hidden : show;
+  p.hidden = !show;
+  if (show) $('q').focus();
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleSearch(false); });
+function doSearch(e) { e.preventDefault(); term = $('q').value.trim(); toggleSearch(false); loadFeed(); }
 function clearSearch() { term = ''; $('q').value = ''; loadFeed(); }
 async function loadFeed() {
   let q = sb.from('posts').select('id,title,region,image_url,media,created_at,profiles(first_name,last_name)')
