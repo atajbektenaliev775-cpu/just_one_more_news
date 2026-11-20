@@ -100,3 +100,14 @@ input,select,textarea{font-size:16px}
 #auth-box a.me{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;text-decoration:none}
 #auth-box a.me:hover{color:var(--accent)}
 .me span{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.btn{transition:transform .15s,box-shadow .15s,background .15s,color .15s,border-color .15s}
+@media(hover:hover){
+.btn:hover{transform:translateY(-2px);box-shadow:0 4px 10px #0003}
+.btn:not(.alt):not(.ok):not(.no):hover{background:var(--accent)}
+.btn.alt:hover{background:var(--ink);color:#fff}
+.btn.ok:hover{background:#15662d}
+.btn.no:hover{background:#a02e22}
+}
+.btn:active{transform:translateY(0) scale(.97);box-shadow:none}
+@media(prefers-reduced-motion:reduce){.btn{transition:none}.btn:hover,.btn:active{transform:none}}
