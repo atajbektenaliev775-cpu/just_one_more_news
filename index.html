@@ -27,6 +27,14 @@
   </div>
 </header>
 
+<div id="filters">
+  <label class="dt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>С</span><input type="date" id="d1" onchange="dateChange()"></label>
+  <label class="dt"><span>По</span><input type="date" id="d2" onchange="dateChange()"></label>
+  <button class="chip" onclick="quick(1)">Сегодня</button>
+  <button class="chip" onclick="quick(7)">7 дней</button>
+  <button class="chip" onclick="quick(30)">30 дней</button>
+  <button class="chip" onclick="setDates('','')">Сбросить даты</button>
+</div>
 <main id="app"></main>
 <footer>© Just One More News</footer>
 

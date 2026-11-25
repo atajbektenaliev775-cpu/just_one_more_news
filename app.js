@@ -30,7 +30,11 @@ function setRegion(r) { region = r; if (r === 'all') { term = ''; const qi = $('
 // ---------- Лента ----------
 const mediaOf = (p) => (p.media && p.media.length ? p.media
   : [p.image_url && { type: 'image', url: p.image_url }, p.video_url && { type: 'video', url: p.video_url }].filter(Boolean).map((m, i) => ({ ...m, id: i + 1 })));
-let term = '';
+let term = '', d1 = '', d2 = '';
+const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function setDates(a, b) { d1 = a; d2 = b; $('d1').value = a; $('d2').value = b; loadFeed(); }
+function quick(days) { const t = new Date(), f = new Date(); f.setDate(t.getDate() - days + 1); setDates(isoDay(f), isoDay(t)); }
+function dateChange() { d1 = $('d1').value; d2 = $('d2').value; loadFeed(); }
 function toggleSearch(show) {
   const p = $('search-panel');
   show = show === undefined ? p.hidden : show;
@@ -46,10 +50,14 @@ async function loadFeed() {
   if (region !== 'all') q = q.eq('region', region);
   const words = term.replace(/[,()*%\\"'\u0060]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 5);
   if (words.length) q = q.filter('and', '(' + words.map((x) => `or(title.ilike.*${x}*,body.ilike.*${x}*)`).join(',') + ')');
+  let from = d1, to = d2;
+  if (from && to && from > to) [from, to] = [to, from];
+  if (from) q = q.filter('created_at', 'gte.' + new Date(from + 'T00:00:00').toISOString());
+  if (to) q = q.filter('created_at', 'lte.' + new Date(to + 'T23:59:59.999').toISOString());
   const { data, error } = await q;
   if (error) return ($('app').innerHTML = `<p class="msg">Ошибка: ${esc(error.message)}</p>`);
   const found = term ? `<p class="meta">Запрос «${esc(term)}»: найдено ${data.length} · <a href="#" onclick="clearSearch();return false">сбросить поиск</a></p>` : '';
-  if (!data.length) return ($('app').innerHTML = found + `<p>${term ? 'Ничего не найдено.' : 'В этом регионе пока нет новостей.'}</p>`);
+  if (!data.length) return ($('app').innerHTML = found + `<p>${term || d1 || d2 ? 'Ничего не найдено.' : 'В этом регионе пока нет новостей.'}</p>`);
   const card = (p) => { const im = mediaOf(p).find((m) => m.type === 'image'); return `<div class="card" onclick="openPost('${p.id}')">
     ${im ? `<img src="${esc(im.url)}" alt="">` : ''}
     <div class="tag">${esc(p.region)}</div><h3>${esc(p.title)}</h3>
