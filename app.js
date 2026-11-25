@@ -45,7 +45,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleSear
 function doSearch(e) { e.preventDefault(); term = $('q').value.trim(); toggleSearch(false); loadFeed(); }
 function clearSearch() { term = ''; $('q').value = ''; loadFeed(); }
 async function loadFeed() {
-  let q = sb.from('posts').select('id,title,region,image_url,media,created_at,profiles(first_name,last_name)')
+  let q = sb.from('posts').select('id,title,region,image_url,media,created_at,profiles(first_name,last_name),post_stats(views)')
     .eq('status', 'approved').order('created_at', { ascending: false });
   if (region !== 'all') q = q.eq('region', region);
   const words = term.replace(/[,()*%\\"'\u0060]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 5);
@@ -61,13 +61,22 @@ async function loadFeed() {
   const card = (p) => { const im = mediaOf(p).find((m) => m.type === 'image'); return `<div class="card" onclick="openPost('${p.id}')">
     ${im ? `<img src="${esc(im.url)}" alt="">` : ''}
     <div class="tag">${esc(p.region)}</div><h3>${esc(p.title)}</h3>
-    <div class="meta">${fmt(p.created_at)} · ${fullName(p.profiles)}</div></div>`; };
+    <div class="meta">${fmt(p.created_at)} · ${fullName(p.profiles)} · <span class="views">${eye}${viewsOf(p.post_stats)}</span></div></div>`; };
   const [first, ...rest] = data;
   $('app').innerHTML = found + `<div class="hero">${card(first)}<div class="grid" style="grid-template-columns:1fr">${rest.slice(0, 2).map(card).join('')}</div></div>
     <div class="grid">${rest.slice(2).map(card).join('')}</div>`;
 }
 
 // ---------- Статья + комментарии ----------
+const eye = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const viewsOf = (s) => (Array.isArray(s) ? s[0]?.views : s?.views) || 0;
+function viewerId() {
+  try {
+    let v = localStorage.getItem('jomn-vid');
+    if (!v) { v = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now(); localStorage.setItem('jomn-vid', v); }
+    return v;
+  } catch (e) { return ''; }
+}
 function renderBody(p) {
   const ms = mediaOf(p), used = new Set();
   const m2h = (m) => m.type === 'video' ? `<video src="${esc(m.url)}" controls></video>` : `<img src="${esc(m.url)}" alt="">`;
@@ -83,13 +92,16 @@ async function openPost(id) {
   if (!p) return;
   const role = profile?.role, canEdit = role === 'admin' || (role === 'journalist' && user?.id === p.author_id);
   open(`<div class="article"><div class="tag">${esc(p.region)}</div><h1>${esc(p.title)}</h1>
-    <div class="meta">${fmt(p.created_at)}</div>
+    <div class="meta">${fmt(p.created_at)} · <span class="views">${eye}<span id="views">…</span></span></div>
     ${canEdit ? `<button class="btn alt" onclick="postDialog('${p.id}')">Редактировать</button>` : ''}
     ${renderBody(p)}<div class="author">Автор: ${fullName(p.profiles)}</div></div>
     <h3>Комментарии</h3><div id="comments"></div>
     <div id="cm-form">${user ? `<form onsubmit="addComment(event,'${p.id}')"><textarea name="t" required maxlength="1000" placeholder="Ваш комментарий"></textarea><button class="btn">Отправить</button></form>`
       : '<p><a href="#" onclick="authDialog();return false">Войдите</a>, чтобы комментировать.</p>'}</div>`);
   loadComments(p.id);
+  sb.rpc('register_view', { p_post: p.id, p_viewer: viewerId() }).then(({ data }) => {
+    if (typeof data === 'number' && $('views')) { $('views').textContent = data; loadFeed(); }
+  });
 }
 async function loadComments(postId) {
   const { data } = await sb.from('comments').select('id,body,created_at,profiles(first_name,last_name)')

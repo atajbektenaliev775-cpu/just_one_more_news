@@ -118,7 +118,14 @@
       },
     };
 
-    return { auth, from, storage };
+    async function rpc(fn, args) {
+      try {
+        await fresh();
+        return await parse(await fetch(url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: headers({ 'Content-Type': 'application/json' }), body: JSON.stringify(args || {}) }));
+      } catch (e) { return err(e.message); }
+    }
+
+    return { auth, from, storage, rpc };
   }
   window.supabase = { createClient };
 })();

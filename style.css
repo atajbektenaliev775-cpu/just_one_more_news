@@ -119,3 +119,5 @@ input,select,textarea{font-size:16px}
 .chip:hover{border-color:var(--accent);color:var(--accent)}
 .chip:active{transform:scale(.96)}
 @media(max-width:700px){#filters{padding:10px 12px 0}.dt input{font-size:16px}}
+
+.views{display:inline-flex;align-items:center;gap:4px;vertical-align:middle}
