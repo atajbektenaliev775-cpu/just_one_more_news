@@ -45,6 +45,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleSear
 function doSearch(e) { e.preventDefault(); term = $('q').value.trim(); toggleSearch(false); loadFeed(); }
 function clearSearch() { term = ''; $('q').value = ''; loadFeed(); }
 async function loadFeed() {
+  if (location.hash.startsWith('#post=')) history.pushState(null, '', location.pathname + location.search);
+  $('filters').hidden = false; document.title = 'Just One More News'; curId = null;
   let q = sb.from('posts').select('id,title,region,image_url,media,created_at,profiles(first_name,last_name),post_stats(views)')
     .eq('status', 'approved').order('created_at', { ascending: false });
   if (region !== 'all') q = q.eq('region', region);
@@ -58,10 +60,7 @@ async function loadFeed() {
   if (error) return ($('app').innerHTML = `<p class="msg">Ошибка: ${esc(error.message)}</p>`);
   const found = term ? `<p class="meta">Запрос «${esc(term)}»: найдено ${data.length} · <a href="#" onclick="clearSearch();return false">сбросить поиск</a></p>` : '';
   if (!data.length) return ($('app').innerHTML = found + `<p>${term || d1 || d2 ? 'Ничего не найдено.' : 'В этом регионе пока нет новостей.'}</p>`);
-  const card = (p) => { const im = mediaOf(p).find((m) => m.type === 'image'); return `<div class="card" onclick="openPost('${p.id}')">
-    ${im ? `<img src="${esc(im.url)}" alt="">` : ''}
-    <div class="tag">${esc(p.region)}</div><h3>${esc(p.title)}</h3>
-    <div class="meta">${fmt(p.created_at)} · ${fullName(p.profiles)} · <span class="views">${eye}${viewsOf(p.post_stats)}</span></div></div>`; };
+  const card = cardHtml;
   const [first, ...rest] = data;
   $('app').innerHTML = found + `<div class="hero">${card(first)}<div class="grid" style="grid-template-columns:1fr">${rest.slice(0, 2).map(card).join('')}</div></div>
     <div class="grid">${rest.slice(2).map(card).join('')}</div>`;
@@ -87,21 +86,56 @@ function renderBody(p) {
   }).join('');
   return html + ms.filter((m) => !used.has(m.id)).map(m2h).join('');
 }
-async function openPost(id) {
+const cardHtml = (p) => { const im = mediaOf(p).find((m) => m.type === 'image'); return `<div class="card" onclick="openPost('${p.id}')">
+    ${im ? `<img src="${esc(im.url)}" alt="">` : ''}
+    <div class="tag">${esc(p.region)}</div><h3>${esc(p.title)}</h3>
+    <div class="meta">${fmt(p.created_at)} · ${fullName(p.profiles)} · <span class="views">${eye}${viewsOf(p.post_stats)}</span></div></div>`; };
+
+let curId = null;
+function route() {
+  const m = location.hash.match(/^#post=([\w-]+)/);
+  if (m) return showPost(m[1]);
+  loadFeed();
+}
+const refreshView = () => (location.hash.startsWith('#post=') ? showPost(curId, true) : loadFeed());
+function goHome() { history.pushState(null, '', location.pathname + location.search); route(); }
+function openPost(id) {
+  if (dlg.open) dlg.close();
+  if (location.hash === '#post=' + id) return route();
+  location.hash = 'post=' + id;
+}
+async function showPost(id, quiet) {
+  curId = id;
+  $('filters').hidden = true;
+  if (!quiet) { $('app').innerHTML = '<p class="meta">Загрузка…</p>'; window.scrollTo(0, 0); }
   const { data: p } = await sb.from('posts').select('*,profiles(first_name,last_name)').eq('id', id).single();
-  if (!p) return;
+  if (curId !== id) return;
+  if (!p) return ($('app').innerHTML = '<p>Статья не найдена или ещё не опубликована. <a href="#" onclick="goHome();return false">На главную</a></p>');
+  document.title = p.title + ' — Just One More News';
   const role = profile?.role, canEdit = role === 'admin' || (role === 'journalist' && user?.id === p.author_id);
-  open(`<div class="article"><div class="tag">${esc(p.region)}</div><h1>${esc(p.title)}</h1>
+  $('app').innerHTML = `<div class="page"><a href="#" class="back" onclick="goHome();return false">← Все новости</a>
+    <div class="article">
+    ${p.status !== 'approved' ? `<p class="msg">Статья ещё не опубликована (статус: ${esc(p.status)}).</p>` : ''}
+    <div class="tag">${esc(p.region)}</div><h1>${esc(p.title)}</h1>
     <div class="meta">${fmt(p.created_at)} · <span class="views">${eye}<span id="views">…</span></span></div>
     ${canEdit ? `<button class="btn alt" onclick="postDialog('${p.id}')">Редактировать</button>` : ''}
     ${renderBody(p)}<div class="author">Автор: ${fullName(p.profiles)}</div></div>
     <h3>Комментарии</h3><div id="comments"></div>
     <div id="cm-form">${user ? `<form onsubmit="addComment(event,'${p.id}')"><textarea name="t" required maxlength="1000" placeholder="Ваш комментарий"></textarea><button class="btn">Отправить</button></form>`
-      : '<p><a href="#" onclick="authDialog();return false">Войдите</a>, чтобы комментировать.</p>'}</div>`);
+      : '<p><a href="#" onclick="authDialog();return false">Войдите</a>, чтобы комментировать.</p>'}</div></div>
+    <h2 class="more-h">Другие новости</h2><div class="grid" id="more"></div>`;
   loadComments(p.id);
+  loadMore(p);
   sb.rpc('register_view', { p_post: p.id, p_viewer: viewerId() }).then(({ data }) => {
-    if (typeof data === 'number' && $('views')) { $('views').textContent = data; loadFeed(); }
+    if (typeof data === 'number' && $('views') && curId === id) $('views').textContent = data;
   });
+}
+async function loadMore(p) {
+  const { data } = await sb.from('posts').select('id,title,region,image_url,media,created_at,profiles(first_name,last_name),post_stats(views)')
+    .eq('status', 'approved').filter('id', 'neq.' + p.id).order('created_at', { ascending: false }).filter('limit', '12');
+  if (!$('more')) return;
+  const rel = (data || []).sort((x, y) => (y.region === p.region) - (x.region === p.region)).slice(0, 6);
+  $('more').innerHTML = rel.map(cardHtml).join('') || '<p class="meta">Других новостей пока нет.</p>';
 }
 async function loadComments(postId) {
   const { data } = await sb.from('comments').select('id,body,created_at,profiles(first_name,last_name)')
@@ -175,7 +209,7 @@ async function saveName(e) {
   const f = e.target;
   const { error } = await sb.from('profiles').update({ first_name: f.fn.value.trim(), last_name: f.ln.value.trim() }).eq('id', user.id);
   if (error) return alert(error.message);
-  await refreshUser(); dlg.close(); loadFeed();
+  await refreshUser(); dlg.close(); refreshView();
 }
 async function savePw(e) {
   e.preventDefault();
@@ -302,7 +336,7 @@ async function submitPost(e) {
     : await sb.from('posts').insert({ ...row, author_id: user.id });
   if (error) return (msg.textContent = error.message);
   open(draft.id ? '<h3>Изменения сохранены.</h3>' : '<h3>Статья отправлена на проверку администратору.</h3>');
-  loadFeed();
+  refreshView();
 }
 
 // ---------- Админ: модерация ----------
@@ -320,7 +354,7 @@ async function modDialog() {
 async function moderate(id, status) {
   const { error } = await sb.from('posts').update({ status }).eq('id', id);
   if (error) return alert(error.message);
-  modDialog(); loadFeed();
+  modDialog(); refreshView();
 }
 
 // ---------- Старт ----------
@@ -330,10 +364,11 @@ if (initError) {
   $('auth-box').innerHTML = '<button class="btn" onclick="authDialog()">Войти</button>';
   $('app').innerHTML = `<p class="msg"><b>Ошибка подключения:</b> ${esc(initError)}</p>`;
 } else {
-  sb.auth.onAuthStateChange(() => refreshUser());
-  refreshUser(); loadFeed();
+  sb.auth.onAuthStateChange(() => refreshUser().then(refreshView));
+  refreshUser().then(route);
+  window.addEventListener('hashchange', route);
   if (/type=(signup|email)/.test(H)) open('<h2>✅ Email подтверждён</h2><p>Пользователь подтверждён. Вы можете закрыть письмо и пользоваться сайтом.</p>');
   else if (/type=recovery/.test(H)) open('<h2>Новый пароль</h2>' + pwForm);
   else if (/error_description/.test(H)) open('<h3>Ссылка недействительна или устарела</h3><p>Запросите письмо ещё раз.</p>');
-  if (H) history.replaceState(null, '', location.pathname + location.search);
+  if (H && !H.startsWith('#post=')) history.replaceState(null, '', location.pathname + location.search);
 }

@@ -121,3 +121,10 @@ input,select,textarea{font-size:16px}
 @media(max-width:700px){#filters{padding:10px 12px 0}.dt input{font-size:16px}}
 
 .views{display:inline-flex;align-items:center;gap:4px;vertical-align:middle}
+
+#filters[hidden]{display:none}
+.page{max-width:780px;margin:0 auto}
+.back{display:inline-block;margin-bottom:14px;color:var(--ink);font-weight:700;text-decoration:none;font-size:14px}
+.back:hover{color:var(--accent)}
+.more-h{font:700 24px Georgia,serif;border-top:3px solid var(--accent);padding-top:14px;margin:36px 0 16px}
+.article .btn{margin:8px 0}
