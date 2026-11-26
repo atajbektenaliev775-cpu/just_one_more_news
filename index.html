@@ -13,6 +13,7 @@
   <div class="top">
     <a href="#" class="logo" onclick="setRegion('all');return false">Just One More <b>News</b></a>
     <div class="right">
+      <button class="icon-btn" id="date-btn" onclick="toggleDates()" aria-label="Фильтр по дате"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button>
       <button class="icon-btn" id="search-btn" onclick="toggleSearch()" aria-label="Поиск"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
       <div id="auth-box"></div>
     </div>
@@ -25,16 +26,16 @@
       <button type="button" class="icon-btn" onclick="toggleSearch(false)" aria-label="Закрыть">✕</button>
     </form>
   </div>
-</header>
-
-<div id="filters">
-  <label class="dt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>С</span><input type="date" id="d1" onchange="dateChange()"></label>
+<div id="date-panel" hidden><div class="dp-in"><label class="dt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>С</span><input type="date" id="d1" onchange="dateChange()"></label>
   <label class="dt"><span>По</span><input type="date" id="d2" onchange="dateChange()"></label>
   <button class="chip" onclick="quick(1)">Сегодня</button>
   <button class="chip" onclick="quick(7)">7 дней</button>
   <button class="chip" onclick="quick(30)">30 дней</button>
-  <button class="chip" onclick="setDates('','')">Сбросить даты</button>
-</div>
+  <button class="chip" onclick="setDates('','');toggleDates(false)">Сбросить даты</button>
+    <button class="icon-btn" style="margin-left:auto" onclick="toggleDates(false)" aria-label="Закрыть">✕</button>
+  </div></div>
+</header>
+
 <main id="app"></main>
 <footer>© Just One More News</footer>
 

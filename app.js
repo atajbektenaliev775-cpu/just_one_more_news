@@ -33,20 +33,27 @@ const mediaOf = (p) => (p.media && p.media.length ? p.media
 let term = '', d1 = '', d2 = '';
 const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 function setDates(a, b) { d1 = a; d2 = b; $('d1').value = a; $('d2').value = b; loadFeed(); }
-function quick(days) { const t = new Date(), f = new Date(); f.setDate(t.getDate() - days + 1); setDates(isoDay(f), isoDay(t)); }
+function quick(days) { const t = new Date(), f = new Date(); f.setDate(t.getDate() - days + 1); setDates(isoDay(f), isoDay(t)); toggleDates(false); }
 function dateChange() { d1 = $('d1').value; d2 = $('d2').value; loadFeed(); }
 function toggleSearch(show) {
   const p = $('search-panel');
   show = show === undefined ? p.hidden : show;
+  if (show) toggleDates(false);
   p.hidden = !show;
   if (show) $('q').focus();
 }
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleSearch(false); });
+function toggleDates(show) {
+  const p = $('date-panel');
+  show = show === undefined ? p.hidden : show;
+  if (show) toggleSearch(false);
+  p.hidden = !show;
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { toggleSearch(false); toggleDates(false); } });
 function doSearch(e) { e.preventDefault(); term = $('q').value.trim(); toggleSearch(false); loadFeed(); }
 function clearSearch() { term = ''; $('q').value = ''; loadFeed(); }
 async function loadFeed() {
   if (location.hash.startsWith('#post=')) history.pushState(null, '', location.pathname + location.search);
-  $('filters').hidden = false; document.title = 'Just One More News'; curId = null;
+  $('date-btn').classList.toggle('on', !!(d1 || d2)); document.title = 'Just One More News'; curId = null;
   let q = sb.from('posts').select('id,title,region,image_url,media,created_at,profiles(first_name,last_name),post_stats(views)')
     .eq('status', 'approved').order('created_at', { ascending: false });
   if (region !== 'all') q = q.eq('region', region);
@@ -106,7 +113,6 @@ function openPost(id) {
 }
 async function showPost(id, quiet) {
   curId = id;
-  $('filters').hidden = true;
   if (!quiet) { $('app').innerHTML = '<p class="meta">Загрузка…</p>'; window.scrollTo(0, 0); }
   const { data: p } = await sb.from('posts').select('*,profiles(first_name,last_name)').eq('id', id).single();
   if (curId !== id) return;
